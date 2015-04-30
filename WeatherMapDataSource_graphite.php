@@ -1,14 +1,16 @@
 <?php
-// Datasource for Graphite (http://graphite.wikidot.com/)
+// Datasource for Graphite (https://graphite.readthedocs.org)
 
 // TARGET graphite:graphite_url/metric
 //      can report single value or two values like if_octets.rx and if_octets.tx
-//      e.g. graphite:graphite.example.com/devices.network.XXXXX.if_octets.rx
-//      e.g. graphite:graphite.example.com/devices.network.XXXXX.if_octets.rx:devices.network.XXXXX.if_octets.tx
+//      Graphite port numbers are also supported, so can use graphite.example.com:8080
+//      e.g. graphite:graphite.example.com/devices.network.switch1.if_octets.rx
+//      e.g. graphite:graphite.example.com/devices.network.switch1.if_octets.rx:devices.network.swtich1.if_octets.tx
 
 class WeatherMapDataSource_graphite extends WeatherMapDataSource {
 
-    //private $regex_pattern = "/^graphite:([\w.]+(:\d+)?)\/([,()*\w.-]+)$/";
+    private $single_regex_pattern = "/^graphite:((?:[0-9]{1,3}\.){3}[0-9]{1,3}(?::[0-9]+)?|([a-zA-Z0-9](?:(?:[a-zA-Z0-9-]*|(?<!-)\.(?![-.]))*[a-zA-Z0-9]+)?(?::[0-9]+)?))\/([,()*\w.-]+)$/";
+    private $double_regex_pattern = "/^graphite:((?:[0-9]{1,3}\.){3}[0-9]{1,3}(?::[0-9]+)?|([a-zA-Z0-9](?:(?:[a-zA-Z0-9-]*|(?<!-)\.(?![-.]))*[a-zA-Z0-9]+)?(?::[0-9]+)?))\/([,()*\w.-]+):([,()*\w.-]+)$/";
 
         function Init(&$map)
         {
@@ -21,9 +23,7 @@ class WeatherMapDataSource_graphite extends WeatherMapDataSource {
 
     function Recognise($targetstring)
     {
-        //if(preg_match($this->regex_pattern, $targetstring, $matches))
-        if( preg_match("/^graphite:([\w.]+(:\d+)?)\/([,()*\w.-]+)$/",$targetstring,$matches) || 
-              preg_match("/^graphite:([\w.]+(:\d+)?)\/([,()*\w.-]+):([,()*\w.-]+)$/",$targetstring,$matches) )
+        if(( preg_match($this->single_regex_pattern, $targetstring, $matches)) || ( preg_match($this->double_regex_pattern, $targetstring, $matches)))
         {
             return TRUE;
         }
@@ -35,24 +35,25 @@ class WeatherMapDataSource_graphite extends WeatherMapDataSource {
 
     function ReadData($targetstring, &$map, &$item)
     {
-        //if(preg_match($this->regex_pattern, $targetstring, $matches)) {
-        if(preg_match("/^graphite:([\w.]+(:\d+)?)\/([,()*\w.-]+)$/",$targetstring,$matches)) {
+        //single
+        if(preg_match($this->single_regex_pattern, $targetstring, $matches)) {
             echo "single DS for $targetstring\n";
             $host = $matches[1];
             $key = $matches[3];
+            echo "host: $host\n";
+            echo "key: $key\n";
 
             // make HTTP request
-            //$url = "http://$host/render/?rawData&from=-5minutes&target=$key";
-            $url = "http://$host/render?from=-5minutes&target=$key&format=raw";
+            $url = "http://$host/render?from=-12minutes&target=$key&format=raw";
             //debug("GRAPHITE DS: Connecting to $url");
             echo "GRAPHITE DS: Connecting to $url\n";
             $ch = curl_init($url);
             curl_setopt_array($ch, array(
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT => 3,
+                CURLOPT_TIMEOUT => 5,
             ));
             $data = curl_exec($ch);
-            print "data: $data";
+            print "data: $data\n";
             $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
             if ($status != 200) {
@@ -61,7 +62,7 @@ class WeatherMapDataSource_graphite extends WeatherMapDataSource {
                 return;
             }
 
-            # Data in form: devices.servers.XXXXXXX.software.items.read.roc,1331035560,1331035740,60|3037.56666667,2995.4,None
+            # Data in form: devices.network.switch1.if_octets.rx,1425057000,1425057300,300|None
 
             list($meta, $values) = explode('|', $data, 2);
             $values = explode(',', trim($values));
@@ -85,16 +86,14 @@ class WeatherMapDataSource_graphite extends WeatherMapDataSource {
         }
 
         //double
-        if(preg_match("/^graphite:([\w.]+(:\d+)?)\/([,()*\w.-]+):([,()*\w.-]+)$/",$targetstring,$matches)) {
+        if(preg_match($this->double_regex_pattern, $targetstring, $matches)) {
             echo "double DS for $targetstring\n";
             $host = $matches[1];
-            //$key = $matches[3];
             $inkey = $matches[3];           
             $outkey = $matches[4];
 
             // make HTTP in request
-            //$url = "http://$host/render/?rawData&from=-5minutes&target=$inkey";
-            $url = "http://$host/render?from=-5minutes&target=$inkey&format=raw";
+            $url = "http://$host/render?from=-12minutes&target=$inkey&format=raw";
             //debug("GRAPHITE DS: Connecting to $url");
             echo "GRAPHITE DS: Connecting to $url\n";
             $ch = curl_init($url);
@@ -111,7 +110,7 @@ class WeatherMapDataSource_graphite extends WeatherMapDataSource {
                 return;
             }
 
-            # Data in form: devices.servers.XXXXXXX.software.items.read.roc,1331035560,1331035740,60|3037.56666667,2995.4,None
+            # Data in form: devices.network.switch1.if_octets.rx,1425057000,1425057300,300|None
 
             list($meta, $values) = explode('|', $data, 2);
             $values = explode(',', trim($values));
@@ -132,8 +131,7 @@ class WeatherMapDataSource_graphite extends WeatherMapDataSource {
             }
             
             // make HTTP out request
-            //$url = "http://$host/render/?rawData&from=-3minutes&target=$outkey";
-            $url = "http://$host/render?from=-5minutes&target=$outkey&format=raw";
+            $url = "http://$host/render?from=-12minutes&target=$outkey&format=raw";
             //debug("GRAPHITE DS: Connecting to $url");
             echo "GRAPHITE DS: Connecting to $url\n";
             $ch = curl_init($url);
@@ -150,7 +148,7 @@ class WeatherMapDataSource_graphite extends WeatherMapDataSource {
                 return;
             }
 
-            # Data in form: devices.servers.XXXXXXX.software.items.read.roc,1331035560,1331035740,60|3037.56666667,2995.4,None
+            # Data in form: devices.network.switch1.if_octets.rx,1425057000,1425057300,300|None
 
             list($meta, $values) = explode('|', $data, 2);
             $values = explode(',', trim($values));
