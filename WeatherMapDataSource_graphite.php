@@ -9,8 +9,8 @@
 
 class WeatherMapDataSource_graphite extends WeatherMapDataSource {
 
-    private $single_regex_pattern = "/^graphite:((?:[0-9]{1,3}\.){3}[0-9]{1,3}(?::[0-9]+)?|([a-zA-Z0-9](?:(?:[a-zA-Z0-9-]*|(?<!-)\.(?![-.]))*[a-zA-Z0-9]+)?(?::[0-9]+)?))\/([,()*\w.-]+)$/";
-    private $double_regex_pattern = "/^graphite:((?:[0-9]{1,3}\.){3}[0-9]{1,3}(?::[0-9]+)?|([a-zA-Z0-9](?:(?:[a-zA-Z0-9-]*|(?<!-)\.(?![-.]))*[a-zA-Z0-9]+)?(?::[0-9]+)?))\/([,()*\w.-]+):([,()*\w.-]+)$/";
+    private $single_regex_pattern = "/^graphite:((?:[0-9]{1,3}\.){3}[0-9]{1,3}(?::[0-9]+)?|([a-zA-Z0-9](?:(?:[a-zA-Z0-9-]*|(?<!-)\.(?![-.]))*[a-zA-Z0-9]+)?(?::[0-9]+)?))\/([=,()*\w.-]+)$/";
+    private $double_regex_pattern = "/^graphite:((?:[0-9]{1,3}\.){3}[0-9]{1,3}(?::[0-9]+)?|([a-zA-Z0-9](?:(?:[a-zA-Z0-9-]*|(?<!-)\.(?![-.]))*[a-zA-Z0-9]+)?(?::[0-9]+)?))\/([=,()*\w.-]+):([=,()*\w.-]+)$/";
 
         function Init(&$map)
         {
