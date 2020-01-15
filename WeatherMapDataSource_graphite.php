@@ -1,38 +1,49 @@
 <?php
-// Datasource for Graphite (https://graphite.readthedocs.org)
 
-// TARGET graphite:graphite_url/metric
-//      can report single value or two values like if_octets.rx and if_octets.tx
-//      Graphite port numbers are also supported, so can use graphite.example.com:8080
-//      e.g. graphite:graphite.example.com/devices.network.switch1.if_octets.rx
-//      e.g. graphite:graphite.example.com/devices.network.switch1.if_octets.rx:devices.network.swtich1.if_octets.tx
-
+/**
+ * Datasource for Graphite (https://graphite.readthedocs.org)
+ *
+ * TARGET graphite:graphite_url/metric
+ * Can report single value or two values like if_octets.rx and if_octets.tx
+ * Graphite port numbers are also supported, so can use graphite.example.com:8080
+ * @example graphite:graphite.example.com/devices.network.switch1.if_octets.rx
+ * @example graphite:graphite.example.com/devices.network.switch1.if_octets.rx:devices.network.swtich1.if_octets.tx
+ */
 class WeatherMapDataSource_graphite extends WeatherMapDataSource {
 
     private $single_regex_pattern = "/^graphite:((?:[0-9]{1,3}\.){3}[0-9]{1,3}(?::[0-9]+)?|([a-zA-Z0-9](?:(?:[a-zA-Z0-9-]*|(?<!-)\.(?![-.]))*[a-zA-Z0-9]+)?(?::[0-9]+)?))\/([=,()*\w.-]+)$/";
     private $double_regex_pattern = "/^graphite:((?:[0-9]{1,3}\.){3}[0-9]{1,3}(?::[0-9]+)?|([a-zA-Z0-9](?:(?:[a-zA-Z0-9-]*|(?<!-)\.(?![-.]))*[a-zA-Z0-9]+)?(?::[0-9]+)?))\/([=,()*\w.-]+):([=,()*\w.-]+)$/";
 
+	/**
+	 * Called after config has been read (so SETs are processed) but just before ReadData.
+	 * Used to allow plugins to verify their dependencies (if any) and bow out gracefully.
+	 *
+	 * @param $map WeatherMap
+	 * @return bool Return FALSE to signal that the plugin is not in a fit state to run at the moment.
+	 */
     function Init(&$map)
     {
-        if(function_exists('curl_init')) { return(TRUE); }
-        //debug("GRAPHITE DS: curl_init() not found. Do you have the PHP CURL module?\n");
-        echo "GRAPHITE DS: curl_init() not found. Do you have the PHP CURL module?\n";
+        if(function_exists('curl_init')) return true;
+        wm_debug("GRAPHITE DS: curl_init() not found. Do you have the PHP CURL module?\n");
 
-        return(FALSE);
+        return false;
     }
-
+	
+	/**
+	 * @param $targetstring string The TARGET string
+	 * @return bool Depending on whether it wants to handle this TARGET called by map->ReadData()
+	 */
     function Recognise($targetstring)
     {
-        if(( preg_match($this->single_regex_pattern, $targetstring, $matches)) || ( preg_match($this->double_regex_pattern, $targetstring, $matches)))
-        {
-            return TRUE;
-        }
-        else
-        {
-            return FALSE;
-        }
+        return preg_match($this->single_regex_pattern, $targetstring, $matches) || preg_match($this->double_regex_pattern, $targetstring, $matches);
     }
-
+	
+	/**
+	 * @param $targetstring
+	 * @param $map WeatherMap
+	 * @param $item WeatherMapItem
+	 * @return array Returns an array of two values (in,out). -1,-1 if it couldn't get valid data
+	 */
     function ReadData($targetstring, &$map, &$item)
     {
         //single
