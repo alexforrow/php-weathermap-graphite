@@ -12,14 +12,14 @@ class WeatherMapDataSource_graphite extends WeatherMapDataSource {
     private $single_regex_pattern = "/^graphite:((?:[0-9]{1,3}\.){3}[0-9]{1,3}(?::[0-9]+)?|([a-zA-Z0-9](?:(?:[a-zA-Z0-9-]*|(?<!-)\.(?![-.]))*[a-zA-Z0-9]+)?(?::[0-9]+)?))\/([,()*\w.-]+)$/";
     private $double_regex_pattern = "/^graphite:((?:[0-9]{1,3}\.){3}[0-9]{1,3}(?::[0-9]+)?|([a-zA-Z0-9](?:(?:[a-zA-Z0-9-]*|(?<!-)\.(?![-.]))*[a-zA-Z0-9]+)?(?::[0-9]+)?))\/([,()*\w.-]+):([,()*\w.-]+)$/";
 
-        function Init(&$map)
-        {
-                if(function_exists('curl_init')) { return(TRUE); }
-                //debug("GRAPHITE DS: curl_init() not found. Do you have the PHP CURL module?\n");
-                echo "GRAPHITE DS: curl_init() not found. Do you have the PHP CURL module?\n";
+    function Init(&$map)
+    {
+        if(function_exists('curl_init')) { return(TRUE); }
+        //debug("GRAPHITE DS: curl_init() not found. Do you have the PHP CURL module?\n");
+        echo "GRAPHITE DS: curl_init() not found. Do you have the PHP CURL module?\n";
 
-                return(FALSE);
-        }
+        return(FALSE);
+    }
 
     function Recognise($targetstring)
     {
@@ -174,6 +174,3 @@ class WeatherMapDataSource_graphite extends WeatherMapDataSource {
         return false;
     }
 }
-
-// vim:ts=4:sw=4:
-?>
