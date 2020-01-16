@@ -35,7 +35,7 @@ class WeatherMapDataSource_graphite extends WeatherMapDataSource {
      */
     function Recognise($targetstring)
     {
-        return preg_match($this->single_regex_pattern, $targetstring, $matches) || preg_match($this->double_regex_pattern, $targetstring, $matches);
+        return preg_match('/^graphite:/', $targetstring);
     }
     
     /**
