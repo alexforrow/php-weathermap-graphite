@@ -13,14 +13,14 @@ class WeatherMapDataSource_graphite extends WeatherMapDataSource {
 
     private $single_regex_pattern = "/^graphite:((?:[0-9]{1,3}\.){3}[0-9]{1,3}(?::[0-9]+)?|([a-zA-Z0-9](?:(?:[a-zA-Z0-9-]*|(?<!-)\.(?![-.]))*[a-zA-Z0-9]+)?(?::[0-9]+)?))\/([=,()*\w.-]+)$/";
     private $double_regex_pattern = "/^graphite:((?:[0-9]{1,3}\.){3}[0-9]{1,3}(?::[0-9]+)?|([a-zA-Z0-9](?:(?:[a-zA-Z0-9-]*|(?<!-)\.(?![-.]))*[a-zA-Z0-9]+)?(?::[0-9]+)?))\/([=,()*\w.-]+):([=,()*\w.-]+)$/";
-
-	/**
-	 * Called after config has been read (so SETs are processed) but just before ReadData.
-	 * Used to allow plugins to verify their dependencies (if any) and bow out gracefully.
-	 *
-	 * @param $map WeatherMap
-	 * @return bool Return FALSE to signal that the plugin is not in a fit state to run at the moment.
-	 */
+    
+    /**
+     * Called after config has been read (so SETs are processed) but just before ReadData.
+     * Used to allow plugins to verify their dependencies (if any) and bow out gracefully.
+     *
+     * @param $map WeatherMap
+     * @return bool Return FALSE to signal that the plugin is not in a fit state to run at the moment.
+     */
     function Init(&$map)
     {
         if(function_exists('curl_init')) return true;
@@ -28,22 +28,22 @@ class WeatherMapDataSource_graphite extends WeatherMapDataSource {
 
         return false;
     }
-	
-	/**
-	 * @param $targetstring string The TARGET string
-	 * @return bool Depending on whether it wants to handle this TARGET called by map->ReadData()
-	 */
+    
+    /**
+     * @param $targetstring string The TARGET string
+     * @return bool Depending on whether it wants to handle this TARGET called by map->ReadData()
+     */
     function Recognise($targetstring)
     {
         return preg_match($this->single_regex_pattern, $targetstring, $matches) || preg_match($this->double_regex_pattern, $targetstring, $matches);
     }
-	
-	/**
-	 * @param $targetstring
-	 * @param $map WeatherMap
-	 * @param $item WeatherMapItem
-	 * @return array Returns an array of two values (in,out). -1,-1 if it couldn't get valid data
-	 */
+    
+    /**
+     * @param $targetstring
+     * @param $map WeatherMap
+     * @param $item WeatherMapItem
+     * @return array Returns an array of two values (in,out). -1,-1 if it couldn't get valid data
+     */
     function ReadData($targetstring, &$map, &$item)
     {
         //single
