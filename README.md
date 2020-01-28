@@ -5,8 +5,8 @@ Simple plugin for [network-weathermap] that adds the ability to source informati
 
 Install to `lib/datasources`.
 
-[network-weathermap]:(https://www.network-weathermap.com)
-[graphite]:(http://graphiteapp.org)
+[network-weathermap]: https://www.network-weathermap.com
+[graphite]: http://graphiteapp.org
 
 Usage
 -----
@@ -26,8 +26,8 @@ This is mainly useful in combination with the aggregation feature, where you can
 The metric name can also include functions like [perSecond] or [seriesByTag].
 If You need to add special characters in the metric name such as `:` or a space, it is better to URL encode it.
 
-[perSecond]:(https://graphite.readthedocs.io/en/latest/functions.html#graphite.render.functions.perSecond)
-[seriesByTag]:(https://graphite.readthedocs.io/en/latest/functions.html#graphite.render.functions.seriesByTag)
+[perSecond]: https://graphite.readthedocs.io/en/latest/functions.html#graphite.render.functions.perSecond
+[seriesByTag]: https://graphite.readthedocs.io/en/latest/functions.html#graphite.render.functions.seriesByTag
 
 Examples
 --------
