@@ -3,16 +3,13 @@
 /**
  * Datasource for Graphite (https://graphite.readthedocs.org)
  *
- * TARGET graphite:graphite_url/metric
+ * TARGET graphite:graphite_host:metric_in:metric_out
  * Can report single value or two values like if_octets.rx and if_octets.tx
  * Graphite port numbers are also supported, so can use graphite.example.com:8080
- * @example graphite:graphite.example.com/devices.network.switch1.if_octets.rx
- * @example graphite:graphite.example.com/devices.network.switch1.if_octets.rx:devices.network.swtich1.if_octets.tx
+ * @example graphite:graphite.example.com:devices.router1.status
+ * @example graphite:graphite.example.com:devices.router1.interfaces.eth0.rx:devices.router1.interfaces.eth0.tx
  */
 class WeatherMapDataSource_graphite extends WeatherMapDataSource {
-
-    private $single_regex_pattern = "/^graphite:((?:[0-9]{1,3}\.){3}[0-9]{1,3}(?::[0-9]+)?|([a-zA-Z0-9](?:(?:[a-zA-Z0-9-]*|(?<!-)\.(?![-.]))*[a-zA-Z0-9]+)?(?::[0-9]+)?))\/([=,()*\w.-]+)$/";
-    private $double_regex_pattern = "/^graphite:((?:[0-9]{1,3}\.){3}[0-9]{1,3}(?::[0-9]+)?|([a-zA-Z0-9](?:(?:[a-zA-Z0-9-]*|(?<!-)\.(?![-.]))*[a-zA-Z0-9]+)?(?::[0-9]+)?))\/([=,()*\w.-]+):([=,()*\w.-]+)$/";
     
     /**
      * Called after config has been read (so SETs are processed) but just before ReadData.
@@ -42,71 +39,23 @@ class WeatherMapDataSource_graphite extends WeatherMapDataSource {
      * @param $targetstring
      * @param $map WeatherMap
      * @param $item WeatherMapItem
-     * @return array Returns an array of two values (in,out). -1,-1 if it couldn't get valid data
+     * @return array Returns an array of two values (in,out) and a timestamp
      */
     function ReadData($targetstring, &$map, &$item)
     {
-        //single
-        if(preg_match($this->single_regex_pattern, $targetstring, $matches)) {
-            echo "single DS for $targetstring\n";
+        $wm_data = array(IN => null, OUT => null);
+        
+        if (preg_match('/^graphite:([^:]+(?::\d+)?):([^:]+)(?::([^:]+))?$/', $targetstring, $matches))
+        {
             $host = $matches[1];
-            $key = $matches[3];
-            echo "host: $host\n";
-            echo "key: $key\n";
-
+            $keys = array_splice($matches, 2, 2);
+            $targets = array_filter($keys, function ($key) { return !is_null($key) && '-' !== $key; });
+            $targets = array_map(function($key) { return urlencode(urldecode($key)); }, $targets);
+            
             // make HTTP request
-            $url = "http://$host/render?from=-12minutes&target=$key&format=raw";
-            //debug("GRAPHITE DS: Connecting to $url");
-            echo "GRAPHITE DS: Connecting to $url\n";
-            $ch = curl_init($url);
-            curl_setopt_array($ch, array(
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT => 5,
-            ));
-            $data = curl_exec($ch);
-            print "data: $data\n";
-            $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-            if ($status != 200) {
-                //debug("GRAPHITE DS: Got HTTP code $status from Graphite");
-                echo "GRAPHITE DS: Got HTTP code $status from Graphite\n";
-                return;
-            }
-
-            # Data in form: devices.network.switch1.if_octets.rx,1425057000,1425057300,300|None
-
-            list($meta, $values) = explode('|', $data, 2);
-            $values = explode(',', trim($values));
+            $url = sprintf('http://%s/render?format=json&from=-12m&target=%s', $host, implode('&target=', $targets));
+            wm_debug(sprintf('Connecting to %s'.PHP_EOL, $url));
             
-            # get most recent value that is not 'None'
-            while(count($values) > 0) {
-                $value = array_pop($values);
-                if ($value !== 'None') {
-                    break;
-                }
-            }
-
-            if ($value === 'None') {
-                // no value found
-                //debug("GRAPHITE DS: No valid data points found");
-                echo "GRAPHITE DS: No valid data points found\n";
-                return;
-            }
-            echo "invalue: $value outvalue: $value\n";
-            return array($value, $value, time());
-        }
-
-        //double
-        if(preg_match($this->double_regex_pattern, $targetstring, $matches)) {
-            echo "double DS for $targetstring\n";
-            $host = $matches[1];
-            $inkey = $matches[3];           
-            $outkey = $matches[4];
-
-            // make HTTP in request
-            $url = "http://$host/render?from=-12minutes&target=$inkey&format=raw";
-            //debug("GRAPHITE DS: Connecting to $url");
-            echo "GRAPHITE DS: Connecting to $url\n";
             $ch = curl_init($url);
             curl_setopt_array($ch, array(
                 CURLOPT_RETURNTRANSFER => true,
@@ -114,74 +63,59 @@ class WeatherMapDataSource_graphite extends WeatherMapDataSource {
             ));
             $data = curl_exec($ch);
             $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
 
-            if ($status != 200) {
-                //debug("GRAPHITE DS: Got HTTP code $status from Graphite");
-                echo "GRAPHITE DS: Got HTTP code $status from Graphite\n";
+            if ($status != 200)
+            {
+                wm_warn(sprintf('Graphite API returned HTTP status code %d', $status));
+                wm_debug($data.PHP_EOL);
                 return;
             }
-
-            # Data in form: devices.network.switch1.if_octets.rx,1425057000,1425057300,300|None
-
-            list($meta, $values) = explode('|', $data, 2);
-            $values = explode(',', trim($values));
+    
+            // process results
+            $metrics = json_decode($data);
+            if (json_last_error())
+            {
+                wm_warn('Graphite API returned invalid JSON');
+                if (function_exists('json_last_error_msg')) wm_debug(json_last_error_msg());
+                wm_debug($data.PHP_EOL);
+                return;
+            }
             
-            # get most recent value that is not 'None'
-            while(count($values) > 0) {
-                $value = array_pop($values);
-                if ($value !== 'None') {
-                    break;
+            foreach ($metrics as $i => $metric)
+            {
+                wm_debug(sprintf('Metric "%s" datapoints: %s'.PHP_EOL, $metric->target, json_encode($metric->datapoints)));
+                list($value, $timestamp) = static::FindLastValidDatapoint($metric->datapoints);
+                if (is_null($value)) continue;
+                wm_debug(sprintf('Latest value is %s at %d.'.PHP_EOL, $value, $timestamp));
+    
+                if (count($metrics) == count($keys))
+                {
+                    $wm_data[$i] = $value;
+                }
+                elseif (defined($metric->target))
+                {
+                    $wm_data[constant($metric->target)] = $value;
+                }
+                else
+                {
+                    $wm_data[key($targets)] = $value;
                 }
             }
-
-            if ($value === 'None') {
-                // no value found
-                //debug("GRAPHITE DS: No valid data points found");
-                echo "GRAPHITE DS: No valid data points found\n";
-                return;
-            }
             
-            // make HTTP out request
-            $url = "http://$host/render?from=-12minutes&target=$outkey&format=raw";
-            //debug("GRAPHITE DS: Connecting to $url");
-            echo "GRAPHITE DS: Connecting to $url\n";
-            $ch = curl_init($url);
-            curl_setopt_array($ch, array(
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT => 3,
-            ));
-            $data = curl_exec($ch);
-            $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-            if ($status != 200) {
-                //debug("GRAPHITE DS: Got HTTP code $status from Graphite");
-                echo "GRAPHITE DS: Got HTTP code $status from Graphite\n";
-                return;
-            }
-
-            # Data in form: devices.network.switch1.if_octets.rx,1425057000,1425057300,300|None
-
-            list($meta, $values) = explode('|', $data, 2);
-            $values = explode(',', trim($values));
-            
-            # get most recent value that is not 'None'
-            while(count($values) > 0) {
-                $outvalue = array_pop($values);
-                if ($outvalue !== 'None') {
-                    break;
-                }
-            }
-
-            if ($outvalue === 'None') {
-                // no value found
-                //debug("GRAPHITE DS: No valid data points found");
-                echo "GRAPHITE DS: No valid data points found\n";
-                return;
-            }   
-            echo "invalue: $value outvalue: $outvalue\n";
-            return array($value, $outvalue, time());
+            return array_merge($wm_data, array($timestamp));
         }
-        echo "no match\n";
-        return false;
+    }
+    
+    /**
+     * @param array $datapoints
+     * @return array last valid datapoint
+     */
+    protected static function FindLastValidDatapoint(array $datapoints)
+    {
+        foreach (array_reverse($datapoints) as $datapoint)
+        {
+            if (!is_null(current($datapoint))) return $datapoint;
+        }
     }
 }
