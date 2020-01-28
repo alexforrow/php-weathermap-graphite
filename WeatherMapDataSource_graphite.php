@@ -24,7 +24,7 @@ class WeatherMapDataSource_graphite extends WeatherMapDataSource {
     function Init(&$map)
     {
         if(function_exists('curl_init')) return true;
-        wm_debug("GRAPHITE DS: curl_init() not found. Do you have the PHP CURL module?\n");
+        wm_debug('curl_init() not found. Do you have the PHP cURL module?'.PHP_EOL);
 
         return false;
     }
