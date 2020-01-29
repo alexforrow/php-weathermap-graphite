@@ -44,7 +44,7 @@ TARGET graphite:graphite.example.com:8080:devices.router1.cpu.usage
 
 Get tagged series:
 ```
-TARGET graphite:graphite.example.com:8080:seriesByTag('name=snmp.in_octets','hostname=router1','ifName=eth0'):seriesByTag('name=snmp.out_octets.rx','hostname=router1','ifName=eth0')
+TARGET graphite:graphite.example.com:8080:seriesByTag('name=snmp.in_octets.rx','hostname=router1','ifName=eth0'):seriesByTag('name=snmp.out_octets.tx','hostname=router1','ifName=eth0')
 ```
 
 Series which are a counter can use `perSecond`:
