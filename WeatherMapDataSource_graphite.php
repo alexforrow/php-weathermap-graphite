@@ -12,6 +12,11 @@
 class WeatherMapDataSource_graphite extends WeatherMapDataSource {
     
     /**
+     * @var integer The default series step
+     */
+    protected $step;
+    
+    /**
      * Called after config has been read (so SETs are processed) but just before ReadData.
      * Used to allow plugins to verify their dependencies (if any) and bow out gracefully.
      *
@@ -20,9 +25,10 @@ class WeatherMapDataSource_graphite extends WeatherMapDataSource {
      */
     function Init(&$map)
     {
+        $this->step = $map->get_hint('step') ?: 60;
+        
         if(function_exists('curl_init')) return true;
         wm_debug('curl_init() not found. Do you have the PHP cURL module?'.PHP_EOL);
-
         return false;
     }
     
@@ -43,7 +49,7 @@ class WeatherMapDataSource_graphite extends WeatherMapDataSource {
      */
     function ReadData($targetstring, &$map, &$item)
     {
-        $wm_data = array(IN => null, OUT => null);
+        $step = $item->get_hint('graphite_step') ?: $this->step;
         
         if (preg_match('/^graphite:([^:]+(?::\d+)?):([^:]+)(?::([^:]+))?$/', $targetstring, $matches))
         {
@@ -53,7 +59,7 @@ class WeatherMapDataSource_graphite extends WeatherMapDataSource {
             $targets = array_map(function($key) { return urlencode(urldecode($key)); }, $targets);
             
             // make HTTP request
-            $url = sprintf('http://%s/render?format=json&from=-12m&target=%s', $host, implode('&target=', $targets));
+            $url = sprintf('http://%s/render?format=json&from=-%ds&target=%s', $host, 2*$step, implode('&target=', $targets));
             wm_debug(sprintf('Connecting to %s'.PHP_EOL, $url));
             
             $ch = curl_init($url);
@@ -82,6 +88,8 @@ class WeatherMapDataSource_graphite extends WeatherMapDataSource {
                 return;
             }
             
+            $timestamp = null;
+            $wm_data = array(IN => null, OUT => null);
             foreach ($metrics as $i => $metric)
             {
                 wm_debug(sprintf('Metric "%s" datapoints: %s'.PHP_EOL, $metric->target, json_encode($metric->datapoints)));
