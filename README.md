@@ -28,7 +28,7 @@ If You need to add special characters in the metric name such as `:` or a space,
 
 The default step is 60 seconds.
 If the series in Graphite have a different step, use `graphite_step` hint at map, node or link level.
-Use for example `SET graphite_step 500` if the time per point is 5 minutes.
+Use for example `SET graphite_step 300` if the time per point is 5 minutes.
 
 [perSecond]: https://graphite.readthedocs.io/en/latest/functions.html#graphite.render.functions.perSecond
 [seriesByTag]: https://graphite.readthedocs.io/en/latest/functions.html#graphite.render.functions.seriesByTag
